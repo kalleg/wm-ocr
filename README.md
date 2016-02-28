@@ -4,9 +4,9 @@
 
 ### import it from filtering.py
 
-'''bash
+```python
  import filtering as filt
-'''
+```
 
 ### Call the method 
 
