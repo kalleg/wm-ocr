@@ -15,8 +15,9 @@
 ```
 
 The parameters are:
+
 Parameter             | Comment
---------------------- | -----------------------------------------------------------
+--------------------- | -------
 [String] imname       | The name of the image (ex: "50752.jpg")
 [String] sourcefolder | The folder where the image is located (ex: "unfiltered/")
 [String] outputfolder | The folder here the image will be saved (ex:"filtered/")
