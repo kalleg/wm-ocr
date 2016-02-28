@@ -10,7 +10,7 @@
 
 ### Call the method 
 
-```bash
+```python
  filt.filtering(imname, sourcefolder, outputfolder)
 ```
 
@@ -25,6 +25,6 @@ OBS:
 ```bash
  filt.filtering ("50751.jpg", "unfiltered/", "filtered/")
  filt.filtering ("unfiltered/50751.jpg", "", "filtered/")
-```bash
+```
 
 These two lines are equivalent and both save the image to "filtered/50751.jpg".
