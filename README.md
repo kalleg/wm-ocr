@@ -15,12 +15,13 @@
 ```
 
 The parameters are:
-'[String] imname'      : The name of the image (ex: "50752.jpg")
-'[String] sourcefolder': The folder where the image is located (ex: "unfiltered/")
-'[String] outputfolder': The folder here the image will be saved (ex:"filtered/")
-The image will be saved with the same name as input
+Parameter               | Comment
+----------------------------------------------------------------------------------
+'[String] imname'       | The name of the image (ex: "50752.jpg")
+'[String] sourcefolder' | The folder where the image is located (ex: "unfiltered/")
+'[String] outputfolder' | The folder here the image will be saved (ex:"filtered/")
 
-OBS:
+### OBS:
 
 ```python
  filt.filtering ("50751.jpg", "unfiltered/", "filtered/")
