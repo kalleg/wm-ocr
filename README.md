@@ -22,7 +22,7 @@ The image will be saved with the same name as input
 
 OBS:
 
-```bash
+```python
  filt.filtering ("50751.jpg", "unfiltered/", "filtered/")
  filt.filtering ("unfiltered/50751.jpg", "", "filtered/")
 ```
