@@ -4,6 +4,15 @@ of scripts for automatic collection of water usage data from analogue water
 usage meters. The scripts mainly provide utilities for filtering, OCR using 
 Tesseract CLI, and data insertion in InfluxDB. 
 
+This project was originally developed for the course KTH AG1815 Sustainable 
+Development, ICT and Innovation.
+
+Project members:
+	kalleg
+	fcurringa
+	bandit738
+	Arouzen
+	skogsfaktor
 
 ## filtering.py
 This script provides a interface for converting colored images with shadows 
