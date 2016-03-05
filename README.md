@@ -1,32 +1,37 @@
 # wm-ocr
+Water meter optical character recognition (WM-OCR for short) is a collection 
+of scripts for automatic collection of water usage data from analogue water
+usage meters. The scripts mainly provide utilities for filtering, OCR using 
+Tesseract CLI, and data insertion in InfluxDB. 
 
-## How to use the filter
 
-### import it from filtering.py
+## filtering.py
+This script provides a interface for converting colored images with shadows 
+and other artifacts to pure black and white image. 
+
+**1. Import from filtering.py**
 
 ```python
  import filtering as filt
 ```
 
-### Call the method 
+** Call the filter/3 **
 
 ```python
- filt.filtering(imname, sourcefolder, outputfolder)
+ filt.filter(imname, sourcefolder, outputfolder)
 ```
 
-The parameters are:
+Parameter              | Comment
+---------------------- | ------------------------------------------------------
+[String] image name    | The name of the image (ex: "50752.jpg")
+[String] source folder | The folder where the image is located (ex: "unfiltered/")
+[String] output folder | The folder here the image will be saved (ex:"filtered/")
 
-Parameter             | Comment
---------------------- | -------
-[String] imname       | The name of the image (ex: "50752.jpg")
-[String] sourcefolder | The folder where the image is located (ex: "unfiltered/")
-[String] outputfolder | The folder here the image will be saved (ex:"filtered/")
-
-### OBS:
+Example:
 
 ```python
- filt.filtering ("50751.jpg", "unfiltered/", "filtered/")
- filt.filtering ("unfiltered/50751.jpg", "", "filtered/")
+ filt.filter ("50751.jpg", "unfiltered/", "filtered/")
+ filt.filter ("unfiltered/50751.jpg", "", "filtered/")
 ```
 
-These two lines are equivalent and both save the image to "filtered/50751.jpg".
+* These two lines are equivalent and both save the image to "filtered/50751.jpg". *

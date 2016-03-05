@@ -67,7 +67,7 @@ def extractroi(img):
     return imout
 
 
-def filtering(imname, sourcefolder, outputfolder):
+def filter(imname, sourcefolder, outputfolder):
     """
     :param imname: [string] the name of the image to be filtered
     :param sourcefolder: [string] the folder it is located (ex: unfiltered/)
