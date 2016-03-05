@@ -24,7 +24,7 @@ and other artifacts to pure black and white image.
  import filtering as filt
 ```
 
-** Call the filter/3 **
+**2. Call the filter/3**
 
 ```python
  filt.filter(imname, sourcefolder, outputfolder)
@@ -43,4 +43,4 @@ Example:
  filt.filter ("unfiltered/50751.jpg", "", "filtered/")
 ```
 
-* These two lines are equivalent and both save the image to "filtered/50751.jpg". *
+*These two lines are equivalent and both save the image to "filtered/50751.jpg".*
