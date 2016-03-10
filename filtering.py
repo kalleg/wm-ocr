@@ -113,23 +113,19 @@ def filter(imname, sourcefolder, outputfolder):
     blurf = blur
     ret3, img_thres = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     img_thres = thresholder(blur, 105)
-    cv2.imwrite("img_thres.jpg", img_thres)
     # Blur image
     img_blur = cv2.GaussianBlur(img_thres, (avg_size_2, avg_size_2), 0)
 
     # Sharpening (parameters to be tuned)
     buff = cv2.GaussianBlur(img_blur, (avg_size_3, avg_size_3), 3)
     img_sharp = cv2.addWeighted(buff, 15, 0, -0.5, 0)
-    cv2.imwrite("img_sharp.jpg", img_sharp)
 
     # Threshold
     blur = cv2.GaussianBlur(img_sharp, (avg_size_4, avg_size_4), 0)
     ret3, img_thres2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    cv2.imwrite("img_thres2.jpg", img_thres2)
 
     # Filter out part of the noise created by shadows
     img_noisefil = filternoise(img_thres2, 20, 25)
-    cv2.imwrite("img_noisefil.jpg", img_noisefil)
 
     # Blur image
     img_blur = cv2.GaussianBlur(img_noisefil, (avg_size_5, avg_size_5), 0)
@@ -139,7 +135,6 @@ def filter(imname, sourcefolder, outputfolder):
 
     # Threshold
     ret3, img_thres3 = cv2.threshold(img_sharp, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    cv2.imwrite("img_thres3.jpg", img_thres3)
 
     # Dissociate image to filter out irrelevant black lines
     img_final = dissociate(img_thres3)
