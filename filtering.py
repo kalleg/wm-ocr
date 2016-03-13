@@ -11,9 +11,32 @@ def filternoise(img, horizontal_thr, authorized):
     return img
 
 
-def computethreshold(img, rate):
-    m = numpy.average(img)
-    return m*rate
+def safeblur(img, avg_size, thr):
+    blur = cv2.GaussianBlur(img, (avg_size, avg_size), 0)
+    blur = rescalevalues(blur)
+    img_thres2 = thresholder(blur, thr)
+    return img_thres2
+
+
+def safesharp(img):
+    img_sharp = cv2.addWeighted(img, 15, 0, -0.5, 0)
+    img_sharp = rescalevalues(img_sharp)
+    return img_sharp
+
+
+def rescalevalues(img):
+    for i in range(0, len(img)):
+        for j in range(0, len(img[0])):
+            if img[i, j] < 0:
+                img[i, j] = 0
+            if img[i, j] > 255:
+                img[i, j] = 255
+    return img
+
+
+def computethreshold(img):
+    m = numpy.std(img)
+    return -2.43*m+168.14
 
 
 def concatpatches(imout, buff):
@@ -34,11 +57,15 @@ def setbrightness(im, lv):
     return im
 
 
-def thresholder(img, lv):
-    for i in range(0, len(img)):
-        for j in range(0, len(img[0])):
-            img[i, j] = 0 if img[i, j] < lv else 255
-    return img
+def thresholder(blur, lv):
+    _img = numpy.zeros((len(blur), len(blur[0])))
+    for i in range(0, len(blur)):
+        for j in range(0, len(blur[0])):
+            if blur[i, j] < lv:
+                _img[i, j] = 0
+            else:
+                _img[i, j] = 255
+    return _img
 
 
 def dissociate(img):
@@ -53,15 +80,20 @@ def dissociate(img):
     for i in range(0, len(ranges)-1):
         # buff: nb_lines*delta(range)
         # we will sum on columns
-        buff = [numpy.asarray(x[ranges[i]:ranges[i+1]]) for x in img]
+        #buff = [numpy.asarray(x[ranges[i]:ranges[i+1]]) for x in img]
+        buff = img[0:len(img), ranges[i]:ranges[i+1]]
+        cv2.imwrite("buff.jpg", buff)
         d = 255*len(buff[0]) - numpy.sum(buff, 1)
         d = (d > 0)
         d = numpy.diff(d)
         rg = numpy.where(d != 0)
         rg = rg[0]
-        if len(rg) > 2:
+        rg = [e for e in rg]
+        if (len(rg) > 2) or (len(rg) == 2 and numpy.sum(buff[0]) > 0):
             # rg: nb_lines*1
             buff = extractroi(buff)
+        if len(buff[0]) < 10:
+            buff = 255*numpy.ones((len(buff), len(buff[0])))
         imout = concatpatches(imout, buff)
     return imout
 
@@ -72,21 +104,39 @@ def extractroi(img):
     d = numpy.diff(d)
     ranges = numpy.where(d != 0)
     ranges = ranges[0]
+    ranges = [e for e in ranges]
+    ranges = [0] + ranges + [len(img)]
     score = []
     for i in range(0, len(ranges)-1):
-        buff = img[ranges[i]:ranges[i+1]]
-        buff = 255*len(buff[0]) - numpy.sum(buff, 1)
+        buff = img[ranges[i]:ranges[i+1], 0:len(img[0])]
+        buff = 255*len(buff[0])*len(buff) - numpy.sum(buff)
         score = score + [numpy.sum(buff)]
     maxsc = numpy.argmax(score)
-    if ranges[maxsc + 1] - ranges[maxsc] < len(img[0])/3:
+    if ranges[maxsc + 1] - ranges[maxsc] < len(img)/3:
         mid = 255*numpy.ones((ranges[maxsc + 1] - ranges[maxsc], len(img[0])))
     else:
         mid = img[ranges[maxsc]:ranges[maxsc+1]]
-    beg = 255*numpy.ones((ranges[maxsc]-1, len(img[0])))
+    if ranges[maxsc] > 0:
+        beg = 255*numpy.ones((ranges[maxsc]-1, len(img[0])))
+    else:
+        beg = 255*numpy.ones((0, len(img[0])))
     end = 255*numpy.ones((len(img)-ranges[maxsc+1]+1, len(img[0])))
     imout = numpy.concatenate((beg, mid))
     imout = numpy.concatenate((imout, end))
+    if ranges[maxsc] == 0:
+        imout = imout[1:len(imout), 0:len(imout[0])]
     return imout
+
+
+def uncrop(img):
+    i = 0
+    _img = 255*numpy.ones((len(img)+20, len(img[0])+20))
+    for line in img:
+        line = numpy.concatenate((255*numpy.ones(10), line, 255*numpy.ones(10)))
+        _img[i] = line
+        i += 1
+    _img = numpy.concatenate((255*numpy.ones((10, len(_img[0]))), _img, 255*numpy.ones((10, len(_img[0])))))
+    return _img
 
 
 def filter(imname, sourcefolder, outputfolder):
@@ -104,39 +154,59 @@ def filter(imname, sourcefolder, outputfolder):
 
     img = cv2.imread(sourcefolder+imname, 0)
     img = setbrightness(img, 40)
-    thr = computethreshold(img, 0.75)
+    cv2.imwrite("test.jpg", img)
+    thr = computethreshold(img)
 
-    img = img[20:210, 20:880]
+    img = img[20:len(img)-20, 20:len(img[0])-20]
     # Threshold
-    blur = cv2.GaussianBlur(img, (avg_size_1, avg_size_1), 0)
+    blur = img
+    #blur = cv2.GaussianBlur(img, (avg_size_1, avg_size_1), 0)
     #blur = numpy.multiply(blur, 2)
-    blurf = blur
-    ret3, img_thres = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    img_thres = thresholder(blur, 105)
+    #blurf = blur
+    #ret3, img_thres = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    img_thres = safeblur(img, avg_size_1, thr)
+    #img_thres = thresholder(blur, thr)
+    cv2.imwrite("blur.jpg", blur)
+    cv2.imwrite("thr.jpg", img_thres)
     # Blur image
-    img_blur = cv2.GaussianBlur(img_thres, (avg_size_2, avg_size_2), 0)
+    #img_blur = cv2.GaussianBlur(img_thres, (avg_size_2, avg_size_2), 0)
+    img_blur = safeblur(img_thres, avg_size_2, thr+15)
+    cv2.imwrite("blurr.jpg", img_blur)
 
     # Sharpening (parameters to be tuned)
-    buff = cv2.GaussianBlur(img_blur, (avg_size_3, avg_size_3), 3)
-    img_sharp = cv2.addWeighted(buff, 15, 0, -0.5, 0)
+    #buff = cv2.GaussianBlur(img_blur, (avg_size_3, avg_size_3), 3)
+    #img_sharp = cv2.addWeighted(buff, 15, 0, -0.5, 0)
+    img_sharp = safesharp(img_blur)
+    cv2.imwrite("sharp.jpg", img_sharp)
 
     # Threshold
-    blur = cv2.GaussianBlur(img_sharp, (avg_size_4, avg_size_4), 0)
-    ret3, img_thres2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    #blur = cv2.GaussianBlur(img_sharp, (avg_size_4, avg_size_4), 0)
+    #img_thres2=blur
+    img_thres2 = safeblur(img_sharp, avg_size_4, thr+15)
+    cv2.imwrite("blur2.jpg", blur)
+    #img_thres2 = thresholder(img_thres2, thr)
+    #ret3, img_thres2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
     # Filter out part of the noise created by shadows
-    img_noisefil = filternoise(img_thres2, 20, 25)
+    img_thres2 = rescalevalues(img_thres2)
+    img_noisefil = filternoise(img_thres2, 55, 5)
+    cv2.imwrite("noise.jpg", img_noisefil)
 
     # Blur image
     img_blur = cv2.GaussianBlur(img_noisefil, (avg_size_5, avg_size_5), 0)
-
+    cv2.imwrite("blur3.jpg", img_blur)
     # Sharpening (parameters to be tuned)
     img_sharp = cv2.addWeighted(img_blur, 15, 0, -0.5, 0)
 
     # Threshold
-    ret3, img_thres3 = cv2.threshold(img_sharp, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
+    img_thres3=img_sharp
+    #ret3, img_thres3 = cv2.threshold(img_sharp, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    cv2.imwrite("sharp2.jpg", img_sharp)
     # Dissociate image to filter out irrelevant black lines
+    img_thres3=rescalevalues(img_thres3)
+    cv2.imwrite("prefinal.jpg", img_thres3)
     img_final = dissociate(img_thres3)
+    cv2.imwrite("dissoc.jpg", img_final)
+    img_final = uncrop(img_final)
 
     cv2.imwrite(outputfolder+imname, img_final)
