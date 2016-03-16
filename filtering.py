@@ -1,8 +1,22 @@
 import numpy
 import cv2
+import csv
+import warnings
 
 
 def filternoise(img, horizontal_thr, authorized):
+    """
+    Filters out the black pixels that are not part of the digits and are near from the image borders
+
+    :type img: numpy.array
+    :type horizontal_thr: int
+    :type authorized: int
+
+    :param img: the image to be filtered
+    :param horizontal_thr: the threshold on the min number of black pixels per line to allow a line not to be deleted
+    :param authorized: the maximum distance from the bottom and the top of the image a line can be erased
+    :return: filtered image
+    """
     for i in range(0, len(img)):
         line = [255-x for x in img[i, :]]
         buff = float(numpy.sum(line))/255
@@ -12,6 +26,18 @@ def filternoise(img, horizontal_thr, authorized):
 
 
 def safeblur(img, avg_size, thr):
+    """
+    Blurs the image and then apply a threshold filter
+
+    :type img: numpy.array
+    :type avg_size: int
+    :type thr: float
+
+    :param img: the image to be filtered
+    :param avg_size: the size of the blur kernel
+    :param thr: the threshold value for the threshold filter
+    :return: filtered image
+    """
     blur = cv2.GaussianBlur(img, (avg_size, avg_size), 0)
     blur = rescalevalues(blur)
     img_thres2 = thresholder(blur, thr)
@@ -19,12 +45,28 @@ def safeblur(img, avg_size, thr):
 
 
 def safesharp(img):
+    """
+    Sharpens the image
+
+    :type img: numpy.array
+
+    :param img: the image to be filtered
+    :return: filtered image
+    """
     img_sharp = cv2.addWeighted(img, 15, 0, -0.5, 0)
     img_sharp = rescalevalues(img_sharp)
     return img_sharp
 
 
 def rescalevalues(img):
+    """
+    Ensures that all the pixel values are between 0 and 255
+
+    :type img: numpy.array
+
+    :param img: the image to be filtered
+    :return: filtered image
+    """
     for i in range(0, len(img)):
         for j in range(0, len(img[0])):
             if img[i, j] < 0:
@@ -34,12 +76,52 @@ def rescalevalues(img):
     return img
 
 
-def computethreshold(img):
-    m = numpy.std(img)
-    return -2.43*m+168.14
+def computethreshold(img, filestr, debug=0, forcethr=0):
+    """
+    Uses the database and polynom fitting to compute the threshold
+    value for threshold filter according to the image contrast
+
+    :type img: numpy.array
+    :type filestr: str
+    :type debug: bool
+    :type forcethr: float
+
+    :param img: the image to be filtered
+    :param filestr: the path to the filter database
+    :param debug: enters debug mode
+    :param forcethr: (optional) bypasses the computation and force the function to output forcethr
+    :return: threshold value for the threshold filter
+    """
+    if not forcethr:
+        warnings.simplefilter("ignore", numpy.RankWarning)
+        m = numpy.std(img)
+        dbfile = open(filestr, 'r')
+        reader = csv.reader(filter(lambda row: row[0] != '#', dbfile))
+        allrows = [map(float, row) for row in reader]
+        x = [e[0] for e in allrows]
+        y = [e[1] for e in allrows]
+        z = numpy.polyfit(x, y, len(x))
+        pol = numpy.poly1d(z)
+        out = pol(m)
+    else:
+        out = forcethr
+    if debug:
+        print("Contrast value : "+str(m))
+        print("Threshold value: "+str(out))
+    return out
 
 
 def concatpatches(imout, buff):
+    """
+    Safely concatenates image in a vertical way, used for dissociate()
+
+    :type imout: numpy.array
+    :type buff: numpy.array
+
+    :param imout: the first part of the image to be concatenated
+    :param buff: the second part of the image to be concatenated
+    :return: concatenated image
+    """
     if len(imout) == 0:
         return buff
     else:
@@ -48,6 +130,16 @@ def concatpatches(imout, buff):
 
 
 def setbrightness(im, lv):
+    """
+    Increases (or lower) the image's brightness
+
+    :type im: numpy.array
+    :type lv: int
+
+    :param im: the raw image
+    :param lv: the level to increase the image brightness
+    :return: filtered image
+    """
     for i in range(0, len(im)):
         line = im[i, :]
         line += lv
@@ -58,6 +150,16 @@ def setbrightness(im, lv):
 
 
 def thresholder(blur, lv):
+    """
+    Applies the threshold filter (if the pixel value is under lv it is black, else white)
+
+    :type blur: numpy.array
+    :type lv: float
+
+    :param blur: the image to be threshold-filtered
+    :param lv: the threshold level (if <lv it becomes black, else white)
+    :return: filtered image
+    """
     _img = numpy.zeros((len(blur), len(blur[0])))
     for i in range(0, len(blur)):
         for j in range(0, len(blur[0])):
@@ -69,8 +171,16 @@ def thresholder(blur, lv):
 
 
 def dissociate(img):
+    """
+    Filters out all black pixels that are not part of the digits
+
+    :type img: numpy.array
+
+    :param img: the image to be filtered
+    :return: filtered image
+    """
     # ranges: to detect digits positions on x axis in the image
-    # img: nb_lines*nb_col
+    img = rescalevalues(img)
     s = 255*len(img) - numpy.sum(img, 0)
     s = (s > 0)
     s = numpy.diff(s)
@@ -80,7 +190,6 @@ def dissociate(img):
     for i in range(0, len(ranges)-1):
         # buff: nb_lines*delta(range)
         # we will sum on columns
-        #buff = [numpy.asarray(x[ranges[i]:ranges[i+1]]) for x in img]
         buff = img[0:len(img), ranges[i]:ranges[i+1]]
         cv2.imwrite("buff.jpg", buff)
         d = 255*len(buff[0]) - numpy.sum(buff, 1)
@@ -99,6 +208,14 @@ def dissociate(img):
 
 
 def extractroi(img):
+    """
+    Detects the black patches whose vertical extension is low and filters them out
+
+    :type img: numpy.array
+
+    :param img: the image to be filtered
+    :return: filtered image
+    """
     d = 255*len(img[0]) - numpy.sum(img, 1)
     d = (d > 0)
     d = numpy.diff(d)
@@ -129,6 +246,14 @@ def extractroi(img):
 
 
 def uncrop(img):
+    """
+    Adds 20 pixels at each border of the image to ease Tesseract's work
+
+    :type img: numpy.array
+
+    :param img: the image to be uncropped
+    :return: filtered image
+    """
     i = 0
     _img = 255*numpy.ones((len(img)+20, len(img[0])+20))
     for line in img:
@@ -139,74 +264,50 @@ def uncrop(img):
     return _img
 
 
-def filter(imname, sourcefolder, outputfolder):
+def imfilter(imname, sourcefolder, outputfolder, dbfilename="filterdb", debug=False, forcethr=0):
     """
-    :param imname: [string] the name of the image to be filtered
-    :param sourcefolder: [string] the folder it is located (ex: unfiltered/)
-    :param outputfolder: [string] the folder where the output will be written (ex: filtered/)
+    The main function, applies all the filters to the raw image
+
+    :type imname: str
+    :type sourcefolder: str
+    :type outputfolder: str
+    :type dbfilename: str
+    :type debug: bool
+    :type forcethr: float
+
+    :param imname: the name of the image to be filtered
+    :param sourcefolder: the folder it is located (ex: unfiltered/)
+    :param outputfolder: the folder where the output will be written (ex: filtered/)
+    :param dbfilename: the name of the database file (if not specified: "filterdb")
+    :param debug: (optional) enters debug mode
+    :param forcethr: (optional) forces the threshold filter to use this level value
     :return: void
     """
-    avg_size_1 = 5
-    avg_size_2 = 3
-    avg_size_3 = 5
-    avg_size_4 = 5
-    avg_size_5 = 3
+    # Blur parameter: the higher the more the digits are "spread"
+    # Modification is not encouraged
+    avg_size = 5
 
+    # Read raw image and increase brightness
     img = cv2.imread(sourcefolder+imname, 0)
     img = setbrightness(img, 40)
-    cv2.imwrite("test.jpg", img)
-    thr = computethreshold(img)
 
+    # Compute the threshold according to DB
+    thr = computethreshold(img, dbfilename, debug, forcethr)
+
+    # Crop to avoid black borders
     img = img[20:len(img)-20, 20:len(img[0])-20]
-    # Threshold
-    blur = img
-    #blur = cv2.GaussianBlur(img, (avg_size_1, avg_size_1), 0)
-    #blur = numpy.multiply(blur, 2)
-    #blurf = blur
-    #ret3, img_thres = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    img_thres = safeblur(img, avg_size_1, thr)
-    #img_thres = thresholder(blur, thr)
-    cv2.imwrite("blur.jpg", blur)
-    cv2.imwrite("thr.jpg", img_thres)
-    # Blur image
-    #img_blur = cv2.GaussianBlur(img_thres, (avg_size_2, avg_size_2), 0)
-    img_blur = safeblur(img_thres, avg_size_2, thr+15)
-    cv2.imwrite("blurr.jpg", img_blur)
+
+    # Threshold and blur
+    img_thres = safeblur(img, avg_size, thr)
 
     # Sharpening (parameters to be tuned)
-    #buff = cv2.GaussianBlur(img_blur, (avg_size_3, avg_size_3), 3)
-    #img_sharp = cv2.addWeighted(buff, 15, 0, -0.5, 0)
-    img_sharp = safesharp(img_blur)
-    cv2.imwrite("sharp.jpg", img_sharp)
+    img_sharp = safesharp(img_thres)
 
-    # Threshold
-    #blur = cv2.GaussianBlur(img_sharp, (avg_size_4, avg_size_4), 0)
-    #img_thres2=blur
-    img_thres2 = safeblur(img_sharp, avg_size_4, thr+15)
-    cv2.imwrite("blur2.jpg", blur)
-    #img_thres2 = thresholder(img_thres2, thr)
-    #ret3, img_thres2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    # Delete remaining noise with custom grid algorithm
+    img_final = dissociate(img_sharp)
 
-    # Filter out part of the noise created by shadows
-    img_thres2 = rescalevalues(img_thres2)
-    img_noisefil = filternoise(img_thres2, 55, 5)
-    cv2.imwrite("noise.jpg", img_noisefil)
-
-    # Blur image
-    img_blur = cv2.GaussianBlur(img_noisefil, (avg_size_5, avg_size_5), 0)
-    cv2.imwrite("blur3.jpg", img_blur)
-    # Sharpening (parameters to be tuned)
-    img_sharp = cv2.addWeighted(img_blur, 15, 0, -0.5, 0)
-
-    # Threshold
-    img_thres3=img_sharp
-    #ret3, img_thres3 = cv2.threshold(img_sharp, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    cv2.imwrite("sharp2.jpg", img_sharp)
-    # Dissociate image to filter out irrelevant black lines
-    img_thres3=rescalevalues(img_thres3)
-    cv2.imwrite("prefinal.jpg", img_thres3)
-    img_final = dissociate(img_thres3)
-    cv2.imwrite("dissoc.jpg", img_final)
+    # Add some white pixels at the borders to help Tesseract
     img_final = uncrop(img_final)
 
+    # Saves the image
     cv2.imwrite(outputfolder+imname, img_final)

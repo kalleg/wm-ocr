@@ -6,7 +6,7 @@ mypath = "/home/florian/Images/unfiltered"
 
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for e in onlyfiles:
+#for e in onlyfiles:
 #e = "cam12-20160309_040001_rot_65_crop.jpg"
-#e = "30705.jpg"
-    filt.filter(e, mypath+"/", "/home/florian/Images/filtered/bases/")
+e = "30734.jpg"
+filt.imfilter(e, mypath+"/", "/home/florian/Images/filtered/bases/", debug=True)

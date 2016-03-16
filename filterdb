@@ -1,0 +1,6 @@
+# Be careful not to introduce blank lines!
+# Also a blank file is not allowed, and the file name should not be changed.
+# Syntax: <contrast value>, <threshold value>.
+# The data below has been computed with given images.
+12, 139
+26, 105
