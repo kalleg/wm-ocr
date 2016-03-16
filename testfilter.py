@@ -2,11 +2,13 @@ import filtering as filt
 from os import listdir
 from os.path import isfile, join
 
-mypath = "/home/florian/Images/unfiltered"
+# This path is to be adapted
+inpath = "/home/florian/Images/unfiltered/somecam12/"
+outpath = "/home/florian/Images/filtered/somecam12/"
 
-onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+# Reads all files in directory inpath
+onlyfiles = [f for f in listdir(inpath) if isfile(join(inpath, f))]
 
-#for e in onlyfiles:
-#e = "cam12-20160309_040001_rot_65_crop.jpg"
-e = "30734.jpg"
-filt.imfilter(e, mypath+"/", "/home/florian/Images/filtered/bases/", debug=True)
+# Filter is applied to all image files
+for e in onlyfiles:
+    filt.imfilter(e, inpath, outpath, debug=True)

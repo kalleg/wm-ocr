@@ -92,9 +92,9 @@ def computethreshold(img, filestr, debug=0, forcethr=0):
     :param forcethr: (optional) bypasses the computation and force the function to output forcethr
     :return: threshold value for the threshold filter
     """
+    m = numpy.std(img)
     if not forcethr:
         warnings.simplefilter("ignore", numpy.RankWarning)
-        m = numpy.std(img)
         dbfile = open(filestr, 'r')
         reader = csv.reader(filter(lambda row: row[0] != '#', dbfile))
         allrows = [map(float, row) for row in reader]
@@ -107,7 +107,7 @@ def computethreshold(img, filestr, debug=0, forcethr=0):
         out = forcethr
     if debug:
         print("Contrast value : "+str(m))
-        print("Threshold value: "+str(out))
+        print("Threshold value: "+str(out)+"\n")
     return out
 
 
@@ -191,7 +191,6 @@ def dissociate(img):
         # buff: nb_lines*delta(range)
         # we will sum on columns
         buff = img[0:len(img), ranges[i]:ranges[i+1]]
-        cv2.imwrite("buff.jpg", buff)
         d = 255*len(buff[0]) - numpy.sum(buff, 1)
         d = (d > 0)
         d = numpy.diff(d)
@@ -204,6 +203,9 @@ def dissociate(img):
         if len(buff[0]) < 10:
             buff = 255*numpy.ones((len(buff), len(buff[0])))
         imout = concatpatches(imout, buff)
+    if len(ranges) == 0:
+        # if the image is plain white or black
+        imout = img
     return imout
 
 
@@ -216,32 +218,43 @@ def extractroi(img):
     :param img: the image to be filtered
     :return: filtered image
     """
-    d = 255*len(img[0]) - numpy.sum(img, 1)
-    d = (d > 0)
-    d = numpy.diff(d)
-    ranges = numpy.where(d != 0)
-    ranges = ranges[0]
-    ranges = [e for e in ranges]
-    ranges = [0] + ranges + [len(img)]
-    score = []
-    for i in range(0, len(ranges)-1):
-        buff = img[ranges[i]:ranges[i+1], 0:len(img[0])]
-        buff = 255*len(buff[0])*len(buff) - numpy.sum(buff)
-        score = score + [numpy.sum(buff)]
-    maxsc = numpy.argmax(score)
-    if ranges[maxsc + 1] - ranges[maxsc] < len(img)/3:
-        mid = 255*numpy.ones((ranges[maxsc + 1] - ranges[maxsc], len(img[0])))
-    else:
-        mid = img[ranges[maxsc]:ranges[maxsc+1]]
-    if ranges[maxsc] > 0:
-        beg = 255*numpy.ones((ranges[maxsc]-1, len(img[0])))
-    else:
-        beg = 255*numpy.ones((0, len(img[0])))
-    end = 255*numpy.ones((len(img)-ranges[maxsc+1]+1, len(img[0])))
-    imout = numpy.concatenate((beg, mid))
-    imout = numpy.concatenate((imout, end))
-    if ranges[maxsc] == 0:
-        imout = imout[1:len(imout), 0:len(imout[0])]
+    try:
+        # We try to filter out the patch, sometimes concatenations with badly defined tables occur and it raises
+        # runtime errors. The solution now is to catch them and forsake the filtering of this patch.
+        d = 255*len(img[0]) - numpy.sum(img, 1)
+        d = (d > 0)
+        d = numpy.diff(d)
+        ranges = numpy.where(d != 0)  # We isolate line blocks where there is at least one black pixel
+        ranges = ranges[0]
+        ranges = [e for e in ranges]
+        ranges = [0] + ranges + [len(img)]
+        score = []
+        for i in range(0, len(ranges)-1):
+            buff = img[ranges[i]:ranges[i+1], 0:len(img[0])]
+            buff = 255*len(buff[0])*len(buff) - numpy.sum(buff)
+            score = score + [numpy.sum(buff)]
+        maxsc = numpy.argmax(score)
+        if ranges[maxsc + 1] - ranges[maxsc] < len(img)/3:
+            # This threshold could be tuned: we want to filter out the blocks of black pixels that are too
+            # small to actually be digits
+            mid = 255*numpy.ones((ranges[maxsc + 1] - ranges[maxsc], len(img[0])))
+        else:
+            mid = img[ranges[maxsc]:ranges[maxsc+1]]
+        if ranges[maxsc] > 0:
+            beg = 255*numpy.ones((ranges[maxsc]-1, len(img[0])))
+        else:
+            beg = 255*numpy.ones((0, len(img[0])))
+        # We merge all treated patches, it would be useful to check if the
+        # final size is the same as the input image one
+        end = 255*numpy.ones((len(img)-ranges[maxsc+1]+1, len(img[0])))
+        imout = numpy.concatenate((beg, mid))
+        imout = numpy.concatenate((imout, end))
+        if ranges[maxsc] == 0:
+            imout = imout[1:len(imout), 0:len(imout[0])]
+        if len(imout) < len(img):
+            raise Exception
+    except:
+        imout = img
     return imout
 
 
@@ -289,6 +302,7 @@ def imfilter(imname, sourcefolder, outputfolder, dbfilename="filterdb", debug=Fa
 
     # Read raw image and increase brightness
     img = cv2.imread(sourcefolder+imname, 0)
+    if debug: print(sourcefolder+imname)
     img = setbrightness(img, 40)
 
     # Compute the threshold according to DB
