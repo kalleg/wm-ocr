@@ -32,6 +32,8 @@ This filter is actually a combination of filters:
 
 **2. Call filter**
 
+The main function needs 3 arguments to be called.
+
 ```python
  filt.imfilter(imname, sourcefolder, outputfolder)
 ```
@@ -42,8 +44,10 @@ Parameter              | Comment
 [String] source folder | The folder where the image is located (ex: "unfiltered/")
 [String] output folder | The folder here the image will be saved (ex: "filtered/")
 
+There are also optional arguments.
+
 ```python
- imfilter(imname, sourcefolder, outputfolder, dbfilename="filterdb", debug=False, forcethr=0)
+ filt.imfilter(imname, sourcefolder, outputfolder, dbfilename="filterdb", debug=False, forcethr=0)
 ```
 
 Optional Parameter     | Comment
