@@ -72,7 +72,7 @@ Empirical observations showd that the threshold value and the image contrast wer
 However, this fuction is hard to compute theoritically, so we chose to approximate it with polynomial fitting. To do so, we need points to map our polynomial and allow it to have a higher order.
 There are currently only 2 points so the polynomial is an affine function, but data can be inserted to the file by the user. This is detailed in the next section.
 
-** 4. Enhancing the filter database**
+**4. Enhancing the filter database**
 
 Data can be inserted to the filterdb file by following the provided syntax. When an image is input to the filter, it computes its contrast and it uses the database file to fit a polynomial to the provided points. If the contrast is near from a known point, then the output should be good but otherwise the model may be inaccurate. This tipically happens when a new camera is setup and its contrast is far from the other cameras' one.
 Here is a suggested workflow for inserting data to the filterdb file:
